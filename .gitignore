@@ -1,0 +1,9 @@
+﻿.venv/
+__pycache__/
+*.pyc
+sentra.db
+sentra_backup_before_mobile.db
+sentra_access_code.txt
+.env
+
+main_backup_before_mobile.py

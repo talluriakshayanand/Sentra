@@ -5,9 +5,17 @@
     {
       "src": "api/index.py",
       "use": "@vercel/python"
+    },
+    {
+      "src": "mobile.html",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
+    {
+      "src": "/mobile.html",
+      "dest": "/mobile.html"
+    },
     {
       "src": "/(.*)",
       "dest": "/api/index.py"

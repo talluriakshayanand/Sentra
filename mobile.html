@@ -4,121 +4,353 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SENTRA Mobile SOS</title>
+<meta name="theme-color" content="#0b0f14">
+<title>SENTRA | Mobile Safety</title>
+
 <style>
-body{background:#0b0f14;color:#eee;font-family:Arial,sans-serif;margin:0;padding:24px}
-main{max-width:440px;margin:40px auto;background:#111720;border:1px solid #27313d;border-radius:20px;padding:24px}
-h1{color:#ff9f43;letter-spacing:3px}
-p{line-height:1.6}
-input,button{box-sizing:border-box;width:100%;padding:14px;margin-top:12px;border-radius:9px;font-size:16px}
-input{background:#0b0f14;color:white;border:1px solid #354252}
-button{background:#ff9f43;color:#111;font-weight:bold;border:0;cursor:pointer}
-.sos{background:#ef4444;color:white;border-radius:50%;width:180px;height:180px;display:block;margin:24px auto}
-.note{color:#ffcf9f;font-size:13px}
-#device{display:none}
-#status{overflow-wrap:anywhere}
+:root {
+  color-scheme: dark;
+  font-family: Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 20px;
+  min-height: 100vh;
+  background: #080c12;
+  color: #edf2f7;
+}
+main {
+  max-width: 440px;
+  margin: 24px auto;
+  padding: 24px;
+  border: 1px solid #293545;
+  border-radius: 20px;
+  background: #111823;
+  box-shadow: 0 20px 60px #0005;
+}
+h1 {
+  margin: 0;
+  color: #ff9f43;
+  letter-spacing: 5px;
+  font-size: 34px;
+}
+.subtitle { color: #9eacbd; }
+.note {
+  color: #ffc98e;
+  font-size: 13px;
+  line-height: 1.6;
+}
+label { display: block; margin-top: 18px; }
+input, button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 12px;
+  border-radius: 10px;
+  font-size: 16px;
+}
+input {
+  background: #080c12;
+  color: white;
+  border: 1px solid #39485a;
+}
+button {
+  border: 0;
+  background: #ff9f43;
+  color: #111;
+  font-weight: bold;
+  cursor: pointer;
+}
+button:disabled { opacity: .55; cursor: wait; }
+.secondary {
+  background: #202c3a;
+  color: #edf2f7;
+  border: 1px solid #39485a;
+}
+.sos {
+  display: block;
+  width: 174px;
+  height: 174px;
+  margin: 26px auto;
+  border-radius: 50%;
+  background: #dc303b;
+  color: white;
+  border: 6px solid #54252d;
+  font-size: 21px;
+  letter-spacing: 1px;
+}
+.panel {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #0b111a;
+  border: 1px solid #263445;
+  overflow-wrap: anywhere;
+}
+#device { display: none; }
+#status { line-height: 1.5; overflow-wrap: anywhere; }
+.small { font-size: 12px; color: #95a5b8; }
 </style>
 </head>
+
 <body>
 <main>
-<h1>SENTRA</h1>
-<p>MOBILE SOS DEVICE · PROTOTYPE</p>
-<p class="note">Test prototype only. This sends an alert to your SENTRA demo, not to police or emergency services.</p>
+  <h1>SENTRA</h1>
+  <p class="subtitle">MOBILE SAFETY CONSOLE · PROTOTYPE</p>
 
-<section id="login">
-<label for="code">Desktop access code</label>
-<input id="code" type="password" placeholder="Enter access code">
-<button id="connect">CONNECT SECURELY</button>
-</section>
+  <p class="note">
+    DEMO ONLY. Test SOS incidents are sent to the SENTRA cloud.
+    This prototype does not contact police or emergency services.
+  </p>
 
-<section id="device">
-<p id="gps">GPS not requested.</p>
-<button id="location">GET CURRENT GPS LOCATION</button>
-<button class="sos" id="sos">SEND TEST SOS</button>
-<button id="logout">SIGN OUT</button>
-</section>
+  <section id="login">
+    <label for="code">SENTRA access code</label>
+    <input id="code" type="password" autocomplete="current-password"
+           placeholder="Enter access code">
+    <button id="connect">CONNECT SECURELY</button>
+  </section>
 
-<p id="status">Enter your access code to connect.</p>
-<p class="note">Keep the desktop running. Remote GPS requires HTTPS. This page does not record camera or microphone audio.</p>
+  <section id="device">
+    <div class="panel">
+      <strong>Cloud connection</strong>
+      <p id="connection">Connected</p>
+      <strong>GPS status</strong>
+      <p id="gps">Location not requested.</p>
+    </div>
+
+    <button class="secondary" id="location">GET CURRENT GPS LOCATION</button>
+    <button class="sos" id="sos">SEND TEST SOS</button>
+    <button class="secondary" id="refresh">CHECK SAVED INCIDENTS</button>
+    <button class="secondary" id="logout">SIGN OUT</button>
+  </section>
+
+  <div class="panel">
+    <strong>Status</strong>
+    <p id="status" role="status" aria-live="polite">
+      Enter your access code to connect.
+    </p>
+  </div>
+
+  <p class="note">
+    GPS permission is requested by your browser. Keep your access code private.
+    Camera and microphone recording are not implemented.
+  </p>
+  <p class="small">SENTRA Cloud · Simulation mode</p>
 </main>
 
 <script>
-let token="";
-let position=null;
-const statusBox=document.getElementById("status");
+"use strict";
 
-async function post(path,data,authenticated=false){
- const headers={"Content-Type":"application/json"};
- if(authenticated) headers.Authorization="Bearer "+token;
- const response=await fetch(path,{
-  method:"POST",headers,body:JSON.stringify(data)
- });
- const result=await response.json();
- if(!response.ok) throw new Error(result.error||"Request failed");
- return result;
+/*
+ * This page is intended to be deployed at:
+ * https://sentra-w54o.vercel.app/mobile.html
+ * The API uses the same origin.
+ */
+const API_BASE = window.location.origin;
+
+let token = "";
+let position = null;
+
+const $ = id => document.getElementById(id);
+const statusBox = $("status");
+
+function setStatus(message) {
+  statusBox.textContent = message;
 }
 
-document.getElementById("connect").onclick=async()=>{
- try{
-  statusBox.textContent="Connecting...";
-  const result=await post("/api/login",{
-   passcode:document.getElementById("code").value.trim()
-  });
-  token=result.token;
-  document.getElementById("login").style.display="none";
-  document.getElementById("device").style.display="block";
-  statusBox.textContent="Connected. Get GPS and send a test SOS.";
- }catch(error){statusBox.textContent=error.message}
-};
+async function api(path, options = {}) {
+  const headers = { "Content-Type": "application/json" };
 
-function getGPS(){
- return new Promise((resolve,reject)=>{
-  if(!navigator.geolocation){
-   reject(new Error("GPS is not supported by this browser."));return;
+  if (options.authenticated) {
+    if (!token) throw new Error("Please connect again.");
+    headers.Authorization = "Bearer " + token;
   }
-  navigator.geolocation.getCurrentPosition(
-   p=>{
-    position={
-     lat:p.coords.latitude,
-     lon:p.coords.longitude,
-     accuracy:Math.round(p.coords.accuracy)
-    };
-    document.getElementById("gps").textContent=
-     "GPS ready: "+position.lat.toFixed(6)+", "+
-     position.lon.toFixed(6)+" (about "+position.accuracy+" m accuracy)";
-    resolve(position);
-   },
-   e=>reject(new Error("Location failed. Allow GPS permission and try again.")),
-   {enableHighAccuracy:true,timeout:20000,maximumAge:0}
-  );
- });
+
+  let response;
+  try {
+    response = await fetch(API_BASE + path, {
+      method: options.method || "GET",
+      headers,
+      body: options.data ? JSON.stringify(options.data) : undefined
+    });
+  } catch {
+    throw new Error(
+      "Cannot reach SENTRA cloud. Check your internet connection and deployment."
+    );
+  }
+
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error("Unexpected server response. Check the deployed API.");
+  }
+
+  if (!response.ok) {
+    throw new Error(result.error || result.message || "Request failed.");
+  }
+
+  return result;
 }
 
-document.getElementById("location").onclick=async()=>{
- try{await getGPS();statusBox.textContent="GPS location ready."}
- catch(e){statusBox.textContent=e.message}
-};
+$("connect").addEventListener("click", async () => {
+  const accessCode = $("code").value.trim();
 
-document.getElementById("sos").onclick=async()=>{
- if(!confirm("Send a TEST SOS to your SENTRA demo?"))return;
- try{
-  if(!position)await getGPS();
-  const result=await post("/api/sos",{
-   lat:position.lat,
-   lon:position.lon,
-   location_label:"Android GPS; accuracy about "+position.accuracy+" m"
-  },true);
-  statusBox.textContent="Test SOS received. Incident #"+result.incident_id+
-   ". No emergency services were contacted.";
- }catch(e){statusBox.textContent=e.message}
-};
+  if (!accessCode) {
+    setStatus("Enter your SENTRA access code.");
+    return;
+  }
 
-document.getElementById("logout").onclick=()=>{
- token="";position=null;
- document.getElementById("device").style.display="none";
- document.getElementById("login").style.display="block";
- statusBox.textContent="Signed out.";
-};
+  $("connect").disabled = true;
+  setStatus("Connecting to SENTRA cloud...");
+
+  try {
+    const result = await api("/api/login", {
+      method: "POST",
+      data: { access_code: accessCode }
+    });
+
+    if (!result.token) {
+      throw new Error("Login succeeded but no token was returned.");
+    }
+
+    token = result.token;
+    $("code").value = "";
+    $("login").style.display = "none";
+    $("device").style.display = "block";
+    $("connection").textContent = "Connected to SENTRA cloud";
+    setStatus("Connected successfully. Request GPS or check saved incidents.");
+  } catch (error) {
+    setStatus(error.message);
+  } finally {
+    $("connect").disabled = false;
+  }
+});
+
+function getGPS() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("This browser does not support GPS location."));
+      return;
+    }
+
+    $("gps").textContent = "Requesting browser location permission...";
+
+    navigator.geolocation.getCurrentPosition(
+      p => {
+        position = {
+          lat: p.coords.latitude,
+          lon: p.coords.longitude,
+          accuracy: Math.round(p.coords.accuracy)
+        };
+
+        $("gps").textContent =
+          position.lat.toFixed(6) + ", " +
+          position.lon.toFixed(6) +
+          " · accuracy about " + position.accuracy + " m";
+
+        resolve(position);
+      },
+      error => {
+        const messages = {
+          1: "Location permission denied. Allow location in browser settings.",
+          2: "Your location is currently unavailable.",
+          3: "GPS request timed out. Please try again."
+        };
+        reject(new Error(messages[error.code] || "Could not get GPS location."));
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    );
+  });
+}
+
+$("location").addEventListener("click", async () => {
+  $("location").disabled = true;
+  try {
+    await getGPS();
+    setStatus("GPS location obtained. No SOS has been sent.");
+  } catch (error) {
+    setStatus(error.message);
+  } finally {
+    $("location").disabled = false;
+  }
+});
+
+$("sos").addEventListener("click", async () => {
+  if (!token) {
+    setStatus("Connect to SENTRA first.");
+    return;
+  }
+
+  if (!confirm(
+    "Send a SIMULATED TEST SOS to SENTRA cloud? This is not a real emergency alert."
+  )) return;
+
+  $("sos").disabled = true;
+  setStatus("Preparing test incident...");
+
+  try {
+    if (!position) await getGPS();
+
+    const result = await api("/api/sos", {
+      method: "POST",
+      authenticated: true,
+      data: {
+        lat: position.lat,
+        lon: position.lon,
+        message: "SENTRA mobile prototype test",
+        location_label: "Browser GPS; accuracy about " +
+          position.accuracy + " m"
+      }
+    });
+
+    const incident = result.incident || {};
+    const id = incident.id || result.incident_id || "saved";
+
+    setStatus(
+      (result.message || "Test SOS submitted.") +
+      ". Incident ID: " + id +
+      ". Simulation only; emergency services were not contacted."
+    );
+  } catch (error) {
+    setStatus(error.message);
+  } finally {
+    $("sos").disabled = false;
+  }
+});
+
+$("refresh").addEventListener("click", async () => {
+  $("refresh").disabled = true;
+  setStatus("Loading saved incidents...");
+
+  try {
+    const result = await api("/api/incidents", {
+      authenticated: true
+    });
+
+    const incidents = Array.isArray(result.incidents)
+      ? result.incidents
+      : [];
+
+    setStatus(
+      "Cloud retrieval successful. " + incidents.length +
+      " incident(s) returned. Check the API response if the count looks unexpected."
+    );
+  } catch (error) {
+    setStatus(error.message);
+  } finally {
+    $("refresh").disabled = false;
+  }
+});
+
+$("logout").addEventListener("click", () => {
+  token = "";
+  position = null;
+  $("device").style.display = "none";
+  $("login").style.display = "block";
+  $("gps").textContent = "Location not requested.";
+  setStatus("Signed out. Connect again to continue.");
+});
 </script>
 </body>
 </html>

@@ -13,8 +13,7 @@
   ],
   "routes": [
     {
-      "src": "/mobile.html",
-      "dest": "/mobile.html"
+      "handle": "filesystem"
     },
     {
       "src": "/(.*)",

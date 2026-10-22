@@ -1,356 +1,282 @@
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0b0f14">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SENTRA | Mobile Safety</title>
-
 <style>
 :root {
-  color-scheme: dark;
-  font-family: Arial, sans-serif;
+  --bg: #090c12;
+  --panel: #121925;
+  --line: #263344;
+  --orange: #ff7628;
+  --text: #f4f6fa;
+  --muted: #98a5b7;
+  --green: #4ade80;
 }
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  padding: 20px;
+  background: radial-gradient(circle at top, #1a2534, var(--bg) 55%);
+  color: var(--text);
+  font-family: "Segoe UI", Arial, sans-serif;
   min-height: 100vh;
-  background: #080c12;
-  color: #edf2f7;
 }
-main {
-  max-width: 440px;
-  margin: 24px auto;
-  padding: 24px;
-  border: 1px solid #293545;
-  border-radius: 20px;
-  background: #111823;
-  box-shadow: 0 20px 60px #0005;
+header {
+  padding: 25px 20px 20px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 13px;
 }
-h1 {
-  margin: 0;
-  color: #ff9f43;
-  letter-spacing: 5px;
-  font-size: 34px;
+.logo {
+  width: 47px;
+  height: 47px;
+  border: 2px solid var(--orange);
+  color: var(--orange);
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 25px;
+  font-weight: 900;
 }
-.subtitle { color: #9eacbd; }
-.note {
-  color: #ffc98e;
-  font-size: 13px;
-  line-height: 1.6;
-}
-label { display: block; margin-top: 18px; }
-input, button {
-  width: 100%;
-  padding: 14px;
-  margin-top: 12px;
-  border-radius: 10px;
-  font-size: 16px;
-}
-input {
-  background: #080c12;
-  color: white;
-  border: 1px solid #39485a;
-}
-button {
-  border: 0;
-  background: #ff9f43;
-  color: #111;
-  font-weight: bold;
-  cursor: pointer;
-}
-button:disabled { opacity: .55; cursor: wait; }
-.secondary {
-  background: #202c3a;
-  color: #edf2f7;
-  border: 1px solid #39485a;
-}
-.sos {
-  display: block;
-  width: 174px;
-  height: 174px;
-  margin: 26px auto;
-  border-radius: 50%;
-  background: #dc303b;
-  color: white;
-  border: 6px solid #54252d;
-  font-size: 21px;
+h1 { margin: 0; letter-spacing: 4px; font-size: 25px; }
+.subtitle { color: var(--muted); font-size: 11px; letter-spacing: 2px; margin-top: 5px; }
+main { max-width: 540px; margin: auto; padding: 22px 16px 40px; }
+.status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--green);
+  font-size: 12px;
   letter-spacing: 1px;
+  margin-bottom: 20px;
 }
-.panel {
-  margin-top: 18px;
-  padding: 14px;
-  border-radius: 12px;
-  background: #0b111a;
-  border: 1px solid #263445;
+.dot {
+  width: 8px; height: 8px; background: var(--green);
+  border-radius: 50%; box-shadow: 0 0 12px #4ade8070;
+}
+.card {
+  background: #111824eF;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 12px 35px #0002;
+}
+h2 { font-size: 15px; margin: 0 0 7px; letter-spacing: 1px; }
+p { font-size: 13px; line-height: 1.6; color: var(--muted); margin: 0 0 16px; }
+button {
+  width: 100%; border: 1px solid var(--line); border-radius: 11px;
+  padding: 14px 12px; color: var(--text); background: #1a2533;
+  font-weight: 650; font-size: 14px; cursor: pointer; margin-top: 9px;
+}
+button:active { transform: scale(.99); }
+.primary { background: var(--orange); color: #160d07; border-color: var(--orange); }
+.danger { background: #4b1720; border-color: #913343; color: #ffb7c1; }
+.camera {
+  width: 100%; background: #070a0f; border: 1px solid var(--line);
+  border-radius: 12px; overflow: hidden; min-height: 150px;
+  display: grid; place-items: center; margin: 12px 0;
+}
+video { display: block; width: 100%; max-height: 310px; object-fit: cover; }
+#placeholder { padding: 30px 10px; text-align: center; color: var(--muted); font-size: 13px; }
+.info {
+  border-radius: 10px; background: #0b111a; padding: 12px;
+  font-size: 12px; line-height: 1.8; color: var(--muted);
   overflow-wrap: anywhere;
 }
-#device { display: none; }
-#status { line-height: 1.5; overflow-wrap: anywhere; }
-.small { font-size: 12px; color: #95a5b8; }
+.label { color: var(--text); }
+#message { margin-top: 12px; font-size: 13px; line-height: 1.5; color: var(--orange); }
+footer { text-align: center; padding: 10px 20px 28px; color: #687588; font-size: 10px; letter-spacing: 1px; }
 </style>
 </head>
-
 <body>
-<main>
-  <h1>SENTRA</h1>
-  <p class="subtitle">MOBILE SAFETY CONSOLE · PROTOTYPE</p>
-
-  <p class="note">
-    DEMO ONLY. Test SOS incidents are sent to the SENTRA cloud.
-    This prototype does not contact police or emergency services.
-  </p>
-
-  <section id="login">
-    <label for="code">SENTRA access code</label>
-    <input id="code" type="password" autocomplete="current-password"
-           placeholder="Enter access code">
-    <button id="connect">CONNECT SECURELY</button>
-  </section>
-
-  <section id="device">
-    <div class="panel">
-      <strong>Cloud connection</strong>
-      <p id="connection">Connected</p>
-      <strong>GPS status</strong>
-      <p id="gps">Location not requested.</p>
-    </div>
-
-    <button class="secondary" id="location">GET CURRENT GPS LOCATION</button>
-    <button class="sos" id="sos">SEND TEST SOS</button>
-    <button class="secondary" id="refresh">CHECK SAVED INCIDENTS</button>
-    <button class="secondary" id="logout">SIGN OUT</button>
-  </section>
-
-  <div class="panel">
-    <strong>Status</strong>
-    <p id="status" role="status" aria-live="polite">
-      Enter your access code to connect.
-    </p>
+<header>
+  <div class="logo">S</div>
+  <div>
+    <h1>SENTRA</h1>
+    <div class="subtitle">PERSONAL SAFETY SYSTEM</div>
   </div>
+</header>
 
-  <p class="note">
-    GPS permission is requested by your browser. Keep your access code private.
-    Camera and microphone recording are not implemented.
-  </p>
-  <p class="small">SENTRA Cloud · Simulation mode</p>
+<main>
+  <div class="status"><span class="dot"></span> MOBILE SAFETY CONSOLE</div>
+
+  <section class="card">
+    <h2>DEVICE STATUS</h2>
+    <p>Configure your device before using the safety demo. Camera and microphone activity remains visible.</p>
+    <div class="info">
+      <div>Camera: <span class="label" id="camStatus">Not enabled</span></div>
+      <div>Microphone: <span class="label" id="micStatus">Not enabled</span></div>
+      <div>GPS: <span class="label" id="gpsStatus">Not checked</span></div>
+    </div>
+    <button class="primary" id="enableBtn">ENABLE CAMERA + MICROPHONE</button>
+    <button id="stopBtn">STOP CAMERA + MICROPHONE</button>
+    <div class="camera">
+      <video id="preview" autoplay playsinline muted hidden></video>
+      <div id="placeholder">CAMERA PREVIEW<br><br>Enable camera and microphone to begin setup.</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>LOCATION SERVICES</h2>
+    <p>Check the phone's current location. Your browser may ask you to allow location access.</p>
+    <button id="gpsBtn">CHECK GPS LOCATION</button>
+    <div class="info" id="locationInfo">Location has not been checked.</div>
+  </section>
+
+  <section class="card">
+    <h2>EMERGENCY TEST</h2>
+    <p>This sends a test alert to your configured SENTRA demo server. It does not contact police or emergency services.</p>
+    <button class="danger" id="sosBtn">SEND TEST SOS</button>
+    <div id="message" role="status">Ready for setup.</div>
+  </section>
 </main>
+
+<footer>SENTRA COMMAND · PROTOTYPE MODE · NO REAL EMERGENCY DISPATCH</footer>
 
 <script>
 "use strict";
 
-/*
- * This page is intended to be deployed at:
- * https://sentra-w54o.vercel.app/mobile.html
- * The API uses the same origin.
- */
-const API_BASE = window.location.origin;
-
-let token = "";
-let position = null;
+let mediaStream = null;
+let lastLocation = null;
 
 const $ = id => document.getElementById(id);
-const statusBox = $("status");
+const setMessage = text => { $("message").textContent = text; };
 
-function setStatus(message) {
-  statusBox.textContent = message;
-}
-
-async function api(path, options = {}) {
-  const headers = { "Content-Type": "application/json" };
-
-  if (options.authenticated) {
-    if (!token) throw new Error("Please connect again.");
-    headers.Authorization = "Bearer " + token;
-  }
-
-  let response;
-  try {
-    response = await fetch(API_BASE + path, {
-      method: options.method || "GET",
-      headers,
-      body: options.data ? JSON.stringify(options.data) : undefined
-    });
-  } catch {
-    throw new Error(
-      "Cannot reach SENTRA cloud. Check your internet connection and deployment."
-    );
-  }
-
-  let result;
-  try {
-    result = await response.json();
-  } catch {
-    throw new Error("Unexpected server response. Check the deployed API.");
-  }
-
-  if (!response.ok) {
-    throw new Error(result.error || result.message || "Request failed.");
-  }
-
-  return result;
-}
-
-$("connect").addEventListener("click", async () => {
-  const accessCode = $("code").value.trim();
-
-  if (!accessCode) {
-    setStatus("Enter your SENTRA access code.");
+async function enableMedia() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    setMessage("Camera and microphone require HTTPS or localhost and a supported browser.");
     return;
   }
-
-  $("connect").disabled = true;
-  setStatus("Connecting to SENTRA cloud...");
-
   try {
-    const result = await api("/api/login", {
-      method: "POST",
-      data: { access_code: accessCode }
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" },
+      audio: true
     });
-
-    if (!result.token) {
-      throw new Error("Login succeeded but no token was returned.");
-    }
-
-    token = result.token;
-    $("code").value = "";
-    $("login").style.display = "none";
-    $("device").style.display = "block";
-    $("connection").textContent = "Connected to SENTRA cloud";
-    setStatus("Connected successfully. Request GPS or check saved incidents.");
+    $("preview").srcObject = mediaStream;
+    $("preview").hidden = false;
+    $("placeholder").hidden = true;
+    $("camStatus").textContent = "Active";
+    $("micStatus").textContent = "Active";
+    setMessage("Camera and microphone enabled. This page previews locally; it does not stream to the laptop yet.");
   } catch (error) {
-    setStatus(error.message);
-  } finally {
-    $("connect").disabled = false;
+    $("camStatus").textContent = "Not enabled";
+    $("micStatus").textContent = "Not enabled";
+    setMessage("Could not enable camera/microphone: " + error.message + ". Check browser permissions and try again.");
   }
-});
+}
+
+function stopMedia() {
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(track => track.stop());
+    mediaStream = null;
+  }
+  $("preview").srcObject = null;
+  $("preview").hidden = true;
+  $("placeholder").hidden = false;
+  $("camStatus").textContent = "Stopped";
+  $("micStatus").textContent = "Stopped";
+  setMessage("Camera and microphone stopped.");
+}
 
 function getGPS() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject(new Error("This browser does not support GPS location."));
+      reject(new Error("Geolocation is not supported by this browser."));
       return;
     }
-
-    $("gps").textContent = "Requesting browser location permission...";
-
     navigator.geolocation.getCurrentPosition(
-      p => {
-        position = {
-          lat: p.coords.latitude,
-          lon: p.coords.longitude,
-          accuracy: Math.round(p.coords.accuracy)
+      position => {
+        lastLocation = {
+          lat: position.coords.latitude,
+          lon: position.coords.longitude
         };
-
-        $("gps").textContent =
-          position.lat.toFixed(6) + ", " +
-          position.lon.toFixed(6) +
-          " · accuracy about " + position.accuracy + " m";
-
-        resolve(position);
+        $("gpsStatus").textContent = "Available";
+        $("locationInfo").textContent =
+          "Latitude: " + lastLocation.lat.toFixed(6) +
+          " | Longitude: " + lastLocation.lon.toFixed(6);
+        resolve(lastLocation);
       },
       error => {
-        const messages = {
-          1: "Location permission denied. Allow location in browser settings.",
-          2: "Your location is currently unavailable.",
-          3: "GPS request timed out. Please try again."
-        };
-        reject(new Error(messages[error.code] || "Could not get GPS location."));
+        $("gpsStatus").textContent = "Unavailable";
+        reject(new Error(error.message));
       },
-      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
   });
 }
 
-$("location").addEventListener("click", async () => {
-  $("location").disabled = true;
+async function loginAndSendSOS(location) {
+  // Keep your existing deployed API endpoint and authentication flow.
+  // Login/access code must be configured for your SENTRA server.
+  const token = sessionStorage.getItem("sentra_token");
+  if (!token) {
+    throw new Error("Not connected to the SENTRA server. Open your existing login page and sign in first.");
+  }
+
+  const response = await fetch("/api/sos", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify({
+      lat: location?.lat ?? null,
+      lon: location?.lon ?? null,
+      location_label: location
+        ? location.lat.toFixed(5) + ", " + location.lon.toFixed(5)
+        : "Location unavailable"
+    })
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error("SENTRA server returned " + response.status + ": " + details);
+  }
+  return response.json().catch(() => ({}));
+}
+
+$("enableBtn").addEventListener("click", enableMedia);
+$("stopBtn").addEventListener("click", stopMedia);
+
+$("gpsBtn").addEventListener("click", async () => {
+  $("gpsBtn").disabled = true;
   try {
     await getGPS();
-    setStatus("GPS location obtained. No SOS has been sent.");
+    setMessage("GPS location acquired.");
   } catch (error) {
-    setStatus(error.message);
+    setMessage("GPS unavailable: " + error.message);
   } finally {
-    $("location").disabled = false;
+    $("gpsBtn").disabled = false;
   }
 });
 
-$("sos").addEventListener("click", async () => {
-  if (!token) {
-    setStatus("Connect to SENTRA first.");
-    return;
-  }
+$("sosBtn").addEventListener("click", async () => {
+  if (!confirm("Send a TEST SOS to your SENTRA demo console? This does not contact emergency services.")) return;
 
-  if (!confirm(
-    "Send a SIMULATED TEST SOS to SENTRA cloud? This is not a real emergency alert."
-  )) return;
-
-  $("sos").disabled = true;
-  setStatus("Preparing test incident...");
+  $("sosBtn").disabled = true;
+  setMessage("Preparing test alert...");
 
   try {
-    if (!position) await getGPS();
-
-    const result = await api("/api/sos", {
-      method: "POST",
-      authenticated: true,
-      data: {
-        lat: position.lat,
-        lon: position.lon,
-        message: "SENTRA mobile prototype test",
-        location_label: "Browser GPS; accuracy about " +
-          position.accuracy + " m"
-      }
-    });
-
-    const incident = result.incident || {};
-    const id = incident.id || result.incident_id || "saved";
-
-    setStatus(
-      (result.message || "Test SOS submitted.") +
-      ". Incident ID: " + id +
-      ". Simulation only; emergency services were not contacted."
-    );
+    let location = lastLocation;
+    if (!location) {
+      try { location = await getGPS(); }
+      catch (_) { location = null; }
+    }
+    await loginAndSendSOS(location);
+    setMessage("Test SOS sent to SENTRA. Check the desktop console.");
   } catch (error) {
-    setStatus(error.message);
+    setMessage("Alert not sent: " + error.message);
   } finally {
-    $("sos").disabled = false;
+    $("sosBtn").disabled = false;
   }
 });
 
-$("refresh").addEventListener("click", async () => {
-  $("refresh").disabled = true;
-  setStatus("Loading saved incidents...");
-
-  try {
-    const result = await api("/api/incidents", {
-      authenticated: true
-    });
-
-    const incidents = Array.isArray(result.incidents)
-      ? result.incidents
-      : [];
-
-    setStatus(
-      "Cloud retrieval successful. " + incidents.length +
-      " incident(s) returned. Check the API response if the count looks unexpected."
-    );
-  } catch (error) {
-    setStatus(error.message);
-  } finally {
-    $("refresh").disabled = false;
-  }
-});
-
-$("logout").addEventListener("click", () => {
-  token = "";
-  position = null;
-  $("device").style.display = "none";
-  $("login").style.display = "block";
-  $("gps").textContent = "Location not requested.";
-  setStatus("Signed out. Connect again to continue.");
-});
+// Stop active hardware if the page is closed or navigated away.
+window.addEventListener("pagehide", stopMedia);
 </script>
 </body>
 </html>

@@ -1,4 +1,6 @@
 
+import base64
+import hashlib
 import hmac
 import json
 import os
@@ -19,22 +21,53 @@ MAX_BODY = 16_384
 def database():
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL is not configured")
-    return psycopg.connect(DATABASE_URL)
+    return psycopg.connect(DATABASE_URL, connect_timeout=10)
 
 
-def initialise_database():
-    with database() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS incidents (
-                id TEXT PRIMARY KEY,
-                received_at TIMESTAMPTZ NOT NULL,
-                lat DOUBLE PRECISION NOT NULL,
-                lon DOUBLE PRECISION NOT NULL,
-                source TEXT NOT NULL,
-                status TEXT NOT NULL,
-                mode TEXT NOT NULL
-            )
-        """)
+def initialise_database(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS incidents (
+            id TEXT PRIMARY KEY,
+            received_at TIMESTAMPTZ NOT NULL,
+            lat DOUBLE PRECISION NOT NULL,
+            lon DOUBLE PRECISION NOT NULL,
+            source TEXT NOT NULL,
+            status TEXT NOT NULL,
+            mode TEXT NOT NULL
+        )
+    """)
+
+
+def make_token():
+    payload = json.dumps({
+        "exp": int(time.time()) + TOKEN_LIFETIME,
+        "nonce": secrets.token_hex(16)
+    }, separators=(",", ":")).encode()
+    encoded = base64.urlsafe_b64encode(payload).decode().rstrip("=")
+    signature = hmac.new(
+        ACCESS_CODE.encode(), encoded.encode(), hashlib.sha256
+    ).digest()
+    sig = base64.urlsafe_b64encode(signature).decode().rstrip("=")
+    return encoded + "." + sig
+
+
+def valid_token(token):
+    try:
+        encoded, supplied_sig = token.split(".", 1)
+        expected = base64.urlsafe_b64encode(
+            hmac.new(
+                ACCESS_CODE.encode(), encoded.encode(), hashlib.sha256
+            ).digest()
+        ).decode().rstrip("=")
+
+        if not hmac.compare_digest(supplied_sig, expected):
+            return False
+
+        padded = encoded + "=" * (-len(encoded) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(padded))
+        return int(payload["exp"]) > int(time.time())
+    except (ValueError, KeyError, TypeError, json.JSONDecodeError):
+        return False
 
 
 class handler(BaseHTTPRequestHandler):
@@ -59,11 +92,11 @@ class handler(BaseHTTPRequestHandler):
 
     def authenticated(self):
         auth = self.headers.get("Authorization", "")
-        if not auth.startswith("Bearer "):
-            return False
-        token = auth[7:]
-        expiry = getattr(self, "_session_expiry", {}).get(token)
-        return expiry is not None and expiry > time.time()
+        return (
+            auth.startswith("Bearer ")
+            and bool(ACCESS_CODE)
+            and valid_token(auth[7:])
+        )
 
     def do_GET(self):
         path = urlparse(self.path).path
@@ -77,9 +110,33 @@ class handler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/incidents":
-            self.send_json(503, {
-                "error": "Session storage needs persistent configuration"
-            })
+            if not self.authenticated():
+                self.send_json(401, {"error": "Login required"})
+                return
+
+            try:
+                with database() as conn:
+                    initialise_database(conn)
+                    rows = conn.execute("""
+                        SELECT id, received_at, lat, lon, source, status, mode
+                        FROM incidents
+                        ORDER BY received_at DESC
+                        LIMIT 100
+                    """).fetchall()
+
+                self.send_json(200, {
+                    "incidents": [{
+                        "id": r[0],
+                        "received_at": r[1].isoformat(),
+                        "lat": r[2],
+                        "lon": r[3],
+                        "source": r[4],
+                        "status": r[5],
+                        "mode": r[6]
+                    } for r in rows]
+                })
+            except Exception:
+                self.send_json(503, {"error": "Storage unavailable"})
             return
 
         self.send_json(404, {"error": "Not found"})
@@ -95,9 +152,7 @@ class handler(BaseHTTPRequestHandler):
         if path == "/api/login":
             self.login(data)
         elif path == "/api/sos":
-            self.send_json(503, {
-                "error": "Session storage needs persistent configuration"
-            })
+            self.receive_sos(data)
         else:
             self.send_json(404, {"error": "Not found"})
 
@@ -114,6 +169,51 @@ class handler(BaseHTTPRequestHandler):
             return
 
         self.send_json(200, {
-            "message": "Access code verified",
-            "mode": "prototype"
+            "token": make_token(),
+            "expires_in": TOKEN_LIFETIME
         })
+
+    def receive_sos(self, data):
+        if not self.authenticated():
+            self.send_json(401, {"error": "Login required"})
+            return
+
+        lat, lon = data.get("lat"), data.get("lon")
+        if (
+            isinstance(lat, bool) or not isinstance(lat, (int, float))
+            or isinstance(lon, bool) or not isinstance(lon, (int, float))
+            or not -90 <= lat <= 90 or not -180 <= lon <= 180
+        ):
+            self.send_json(400, {"error": "Valid GPS coordinates required"})
+            return
+
+        received_at = datetime.now(timezone.utc)
+        incident = {
+            "id": secrets.token_hex(8),
+            "received_at": received_at.isoformat(),
+            "lat": float(lat),
+            "lon": float(lon),
+            "source": "ANDROID DEVICE",
+            "status": "ACTIVE - SIMULATED",
+            "mode": "SIMULATED SOS"
+        }
+
+        try:
+            with database() as conn:
+                initialise_database(conn)
+                conn.execute("""
+                    INSERT INTO incidents
+                    (id, received_at, lat, lon, source, status, mode)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    incident["id"], received_at, incident["lat"],
+                    incident["lon"], incident["source"],
+                    incident["status"], incident["mode"]
+                ))
+
+            self.send_json(202, {
+                "message": "Simulated SOS saved",
+                "incident": incident
+            })
+        except Exception:
+            self.send_json(503, {"error": "Could not save incident"})

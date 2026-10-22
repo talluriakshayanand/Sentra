@@ -15,9 +15,6 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "")
 TOKEN_LIFETIME = 12 * 60 * 60
 MAX_BODY = 16_384
 
-sessions = {}
-login_attempts = {}
-
 
 def database():
     if not DATABASE_URL:
@@ -38,13 +35,6 @@ def initialise_database():
                 mode TEXT NOT NULL
             )
         """)
-
-
-def prune_sessions():
-    now = time.time()
-    for token, expiry in list(sessions.items()):
-        if expiry <= now:
-            sessions.pop(token, None)
 
 
 class handler(BaseHTTPRequestHandler):
@@ -71,10 +61,8 @@ class handler(BaseHTTPRequestHandler):
         auth = self.headers.get("Authorization", "")
         if not auth.startswith("Bearer "):
             return False
-
         token = auth[7:]
-        prune_sessions()
-        expiry = sessions.get(token)
+        expiry = getattr(self, "_session_expiry", {}).get(token)
         return expiry is not None and expiry > time.time()
 
     def do_GET(self):
@@ -89,33 +77,9 @@ class handler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/incidents":
-            if not self.authenticated():
-                self.send_json(401, {"error": "Login required"})
-                return
-
-            try:
-                with database() as conn:
-                    rows = conn.execute("""
-                        SELECT id, received_at, lat, lon,
-                               source, status, mode
-                        FROM incidents
-                        ORDER BY received_at DESC
-                        LIMIT 100
-                    """).fetchall()
-
-                self.send_json(200, {
-                    "incidents": [{
-                        "id": row[0],
-                        "received_at": row[1].isoformat(),
-                        "lat": row[2],
-                        "lon": row[3],
-                        "source": row[4],
-                        "status": row[5],
-                        "mode": row[6]
-                    } for row in rows]
-                })
-            except Exception:
-                self.send_json(503, {"error": "Storage unavailable"})
+            self.send_json(503, {
+                "error": "Session storage needs persistent configuration"
+            })
             return
 
         self.send_json(404, {"error": "Not found"})
@@ -131,7 +95,9 @@ class handler(BaseHTTPRequestHandler):
         if path == "/api/login":
             self.login(data)
         elif path == "/api/sos":
-            self.receive_sos(data)
+            self.send_json(503, {
+                "error": "Session storage needs persistent configuration"
+            })
         else:
             self.send_json(404, {"error": "Not found"})
 
@@ -140,81 +106,14 @@ class handler(BaseHTTPRequestHandler):
             self.send_json(503, {"error": "Login is not configured"})
             return
 
-        client = self.client_address[0]
-        now = time.time()
-        attempts = [
-            stamp for stamp in login_attempts.get(client, [])
-            if now - stamp < 300
-        ]
-
-        if len(attempts) >= 5:
-            self.send_json(429, {"error": "Try again later"})
-            return
-
         supplied = data.get("code", data.get("access_code", ""))
         if not isinstance(supplied, str) or not hmac.compare_digest(
             supplied, ACCESS_CODE
         ):
-            attempts.append(now)
-            login_attempts[client] = attempts
             self.send_json(401, {"error": "Invalid access code"})
             return
 
-        login_attempts.pop(client, None)
-        token = secrets.token_urlsafe(32)
-        prune_sessions()
-        sessions[token] = time.time() + TOKEN_LIFETIME
-
         self.send_json(200, {
-            "token": token,
-            "expires_in": TOKEN_LIFETIME
+            "message": "Access code verified",
+            "mode": "prototype"
         })
-
-    def receive_sos(self, data):
-        if not self.authenticated():
-            self.send_json(401, {"error": "Login required"})
-            return
-
-        lat = data.get("lat")
-        lon = data.get("lon")
-
-        if (
-            isinstance(lat, bool) or not isinstance(lat, (int, float))
-            or isinstance(lon, bool) or not isinstance(lon, (int, float))
-            or not -90 <= lat <= 90
-            or not -180 <= lon <= 180
-        ):
-            self.send_json(400, {"error": "Valid GPS coordinates required"})
-            return
-
-        received_at = datetime.now(timezone.utc)
-        incident = {
-            "id": secrets.token_hex(8),
-            "received_at": received_at,
-            "lat": float(lat),
-            "lon": float(lon),
-            "source": "ANDROID DEVICE",
-            "status": "ACTIVE - SIMULATED",
-            "mode": "SIMULATED SOS"
-        }
-
-        try:
-            with database() as conn:
-                conn.execute("""
-                    INSERT INTO incidents
-                    (id, received_at, lat, lon, source, status, mode)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """, (
-                    incident["id"], incident["received_at"],
-                    incident["lat"], incident["lon"],
-                    incident["source"], incident["status"],
-                    incident["mode"]
-                ))
-
-            incident["received_at"] = received_at.isoformat()
-            self.send_json(202, {
-                "message": "Simulated SOS saved",
-                "incident": incident
-            })
-        except Exception:
-            self.send_json(503, {"error": "Could not save incident"})

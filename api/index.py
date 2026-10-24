@@ -101,7 +101,7 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = urlparse(self.path).path
 
-        if path == "/api/health":
+        if path in ("/", "/api/health"):
             self.send_json(200, {
                 "service": "SENTRA",
                 "status": "online",
@@ -153,6 +153,8 @@ class handler(BaseHTTPRequestHandler):
             self.login(data)
         elif path == "/api/sos":
             self.receive_sos(data)
+        elif path == "/api/incidents/status":
+            self.update_incident_status(data)
         else:
             self.send_json(404, {"error": "Not found"})
 
@@ -217,3 +219,50 @@ class handler(BaseHTTPRequestHandler):
             })
         except Exception:
             self.send_json(503, {"error": "Could not save incident"})
+
+    def update_incident_status(self, data):
+        if not self.authenticated():
+            self.send_json(401, {"error": "Login required"})
+            return
+
+        incident_id = data.get("id")
+        status = data.get("status")
+
+        allowed_statuses = {
+            "ACTIVE - SIMULATED",
+            "ACKNOWLEDGED",
+            "RESOLVED"
+        }
+
+        if (
+            not isinstance(incident_id, str)
+            or not incident_id
+            or not isinstance(status, str)
+            or status not in allowed_statuses
+        ):
+            self.send_json(400, {
+                "error": "Valid incident id and status required"
+            })
+            return
+
+        try:
+            with database() as conn:
+                initialise_database(conn)
+                row = conn.execute("""
+                    UPDATE incidents
+                    SET status = %s
+                    WHERE id = %s
+                    RETURNING id, status
+                """, (status, incident_id)).fetchone()
+
+            if row is None:
+                self.send_json(404, {"error": "Incident not found"})
+                return
+
+            self.send_json(200, {
+                "message": "Incident status updated",
+                "id": row[0],
+                "status": row[1]
+            })
+        except Exception:
+            self.send_json(503, {"error": "Could not update incident"})
